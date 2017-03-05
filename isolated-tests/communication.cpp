@@ -4,11 +4,10 @@
 
 Communication::Communication(std::string ip, int portno)
 {
-	this->connected = false;
 	this->srv_ip = ip.c_str();
 	this->port = portno;
-	this->fdread = StartConn(this->port);
-	//this->fdwrite = StartConn(this->port);
+	this->fdread = StartConn();
+	//this->fdwrite = StartConn();
 	this->Start();
 }
 
@@ -26,29 +25,45 @@ int Communication::StartConn()
 	memset(&address,0,sizeof(address));
 	address.sin_family = AF_INET;
 	address.sin_port = htons(this->port);
-	if(this->resolveHostname(this->server,&(address.sin_addr)) != 0)
+	if(this->resolveHostname(this->srv_ip.c_str(),&(address.sin_addr)) != 0)
 	{
-		inet_pton(PF_INET,this->server, &(address.sin_addr));
+		inet_pton(PF_INET,this->srv_ip.c_str(), &(address.sin_addr));
 	}
 	int sock_fd = socket(AF_INET,SOCK_STREAM,0);
 	if(sock_fd < 0)
 	{
 		std::cerr << "[ERROR]: Socket() failed." << std::endl;
-		return NULL;
+		return -1;
 	}
-	if(connect((struct sockaddr*)&address,sizeof(address))!= 0)
+	if(connect(sock_fd,(struct sockaddr*)&address,sizeof(address))!= 0)
 	{
 		std::cerr << "[ERROR]: Connect() failed." << std::endl;
-		return NULL;
+		return -1;
 	}
 	return sock_fd;
 }
 
 int Communication::EndConn(int fd)
 {
-	//close sockets
-	close(fd);
-	//	close(this->fdwrite);
+	int res;
+	if((res =	close(fd)) < 0)
+	{
+		std::cerr << "[ERROR]: Close() failed | ERRNO: " << strerror(errno) << std::endl;
+	}
+	return res;
+}
+
+int Communication::resolveHostname(const char *hostname,struct in_addr *addr)
+{
+	struct addrinfo *res;
+
+	int result = getaddrinfo(hostname, NULL, NULL, &res);
+	if(result == 0)
+	{
+		memcpy(addr,&((struct sockaddr_in *)res->ai_addr)->sin_addr, sizeof(struct in_addr));
+		freeaddrinfo(res);
+	}
+	return result;
 }
 
 bool Communication::isstopped()
@@ -97,15 +112,20 @@ void Communication::Stop()
 
 void Communication::RunSnd()
 {
+	int res; //error return of functions
+	std::string snd_value;
+	thi->sndmtx_queue.lock();
 	if(!send_queue.empty())
 	{
-		std::string snd_value;
-		sndmtx_queue.lock();
 		snd_value = send_queue.front();
 		send_queue.pop();
-		sndmtx_queue.unlock();
-		//send();
+		rv = send();
+		if(rv < 0)
+		{
+
+		}
 	}
+	sndmtx_queue.unlock();
 }
 
 void Communication::RunRcv()

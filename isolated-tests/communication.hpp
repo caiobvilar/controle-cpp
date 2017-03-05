@@ -63,6 +63,8 @@ class Communication
 		void RunRcv();
 		void Start();
 		void Stop();
+		void setstopthreads(bool);
+		bool isstopped();
 	public:
 		Communication(std::string ip,int port);
 		~Communication();
