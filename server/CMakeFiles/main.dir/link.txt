@@ -1,0 +1,1 @@
+/usr/bin/cc     CMakeFiles/main.dir/src/server.c.o  -o ../build/main 
