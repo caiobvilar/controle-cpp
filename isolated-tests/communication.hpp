@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/ioctl.h>
+#include "quanser.h"
 
 
 //Todas as mensagens com a placa de comunicacao devem ser da forma
@@ -48,8 +49,10 @@ class Communication
 		int fdread;														//socket file descriptor
 		int fdwrite;													//socket file descriptor
 		int port;															//server port to connect
+		int DACChannel;												//DAC channel to write to
+		int ADCChannel;												//ADC channel to read from
 		std::string srv_ip;										//server ip to connect
-		std::string sndstring;
+		std::string recvstring;								//just trying to speed up thread from allocating memory for a string
 
 		bool stopthreads;
 		struct addrinfo server_addr;

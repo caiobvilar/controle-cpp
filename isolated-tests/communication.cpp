@@ -114,7 +114,6 @@ void Communication::RunSnd()
 {
 	int res; //error return of functions
 	std::string snd_value;
-
 	std::chrono::duration<double,std::milli> dur;
 	std::chrono::duration<double,std::milli> crit_time(100);
 	auto start = std::chrono::high_resolution_clock::now();
@@ -123,17 +122,18 @@ void Communication::RunSnd()
 	while(!send_queue.empty() && !this->isstopped())
 	{
 		snd_value = send_queue.front();
-		send_queue.pop();
+		this->send_queue.pop();
 		auto end = std::chrono::high_resolution_clock::now();
 		dur = end - start;
 		if(dur < crit_time)
 		{
 			std::this_thread::sleep_for(crit_time - dur);
 		}
-		res = send();
+		res = writeDA(this->fdwrite,this->DACChannel,std::stof(snd_value));
 		if(res < 0)
 		{
-			std::cerr << "[ERROR]: Send() failed | ERRNO: " << strerror(errno) << std::endl; 
+			std::cerr << "[ERROR]: Send() failed | ERRNO: " << strerror(errno) << std::endl;
+			this->setstopthreads(true); //faiou 
 
 		}
 		start = std::chrono::high_resolution_clock::now();
@@ -144,17 +144,17 @@ void Communication::RunSnd()
 void Communication::RunRcv()
 {
 	int res; //function call return for error checking
+	std::chrono::duration<double,std::milli> startup(90);
 	this->rcvmtx_queue.lock();
 	while((this->recv_queue.size() < 100) && (!this->isstopped()))
 	{
-		std::this_thread::sleep_for(90ms);
-		res = recv();
+		std::this_thread::sleep_for(startup);
+		res = readAD(this->ADCChannel,this->fdread);
 		if(res < 0)
 		{
-			std::cerr << "[ERROR]: Recv() failed | ERRNO: " << strerror(errno) << std::endl; 
-
+			std::cerr << "[ERROR]: readAD() failed | ERRNO: " << strerror(errno) << std::endl; 
+			this->setstopthreads(true); //faiou 
 		}
-
 		this->recv_queue.push(this->recvstring);
 	}
 	this->rcvmtx_queue.unlock();
@@ -163,7 +163,10 @@ void Communication::RunRcv()
 void Communication::insert_snd_queue(std::string data)
 {
 	this->sndmtx_queue.lock();
-	this->send_queue.push(data);
+	if(this->recv_queue.size() < 100)
+	{
+		this->send_queue.push(data);
+	}
 	this->sndmtx_queue.unlock();
 }
 
