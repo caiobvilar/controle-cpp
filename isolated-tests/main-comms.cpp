@@ -5,7 +5,7 @@
 int main()
 {
 	Communication *test = new Communication(SERVER,PORT);
-	while(true)
+	while(test->running)
 	{
 		std::cout << "GOT: " << test->getfrom_rcv_queue() << std::endl;
 		sleep(1);

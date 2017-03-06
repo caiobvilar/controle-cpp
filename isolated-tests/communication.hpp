@@ -23,7 +23,6 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/ioctl.h>
-#include "quanser.h"
 
 
 //Todas as mensagens com a placa de comunicacao devem ser da forma
@@ -59,6 +58,12 @@ class Communication
 		struct addrinfo *server;
 
 		//////////////METHODS////////////////////////
+		std::string itostr(int);
+		std::string ftostr(float);
+		std::string receiveData(int);
+		int sendData(std::string,int);
+		double readAD(int,int);
+		int writeDA(int,int, float);
 		int resolveHostname(const char *hostname,struct in_addr *addr);
 		int StartConn();
 		int EndConn(int);
@@ -69,6 +74,7 @@ class Communication
 		void setstopthreads(bool);
 		bool isstopped();
 	public:
+		bool running;
 		Communication(std::string ip,int port);
 		~Communication();
 		void insert_snd_queue(std::string);

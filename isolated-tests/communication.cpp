@@ -7,8 +7,18 @@ Communication::Communication(std::string ip, int portno)
 	this->srv_ip = ip.c_str();
 	this->port = portno;
 	this->fdread = StartConn();
-	//this->fdwrite = StartConn();
-	this->Start();
+	if(this->fdread < 0)
+	{
+		std::cerr << "[COMMUNICATION]: exiting due to previous error." << std::endl;
+		this->Stop();
+		//this->EndConn(this->fdread);
+	}
+	else
+	{
+		//this->fdwrite = StartConn();
+		this->Start();
+		this->running=true;
+	}
 }
 
 Communication::~Communication()
@@ -17,6 +27,7 @@ Communication::~Communication()
 	this->EndConn(this->fdread);
 	//this->EndConn(this->fdwrite);
 	this->Stop();
+	this->running=false;
 }
 
 int Communication::StartConn()
@@ -102,12 +113,31 @@ void Communication::Stop()
 {
 	if(this->isstopped()) //stop threads if an outer method told to stop
 	{
-		this->recv_thread.join();
-		//this->send_thread.join();
+		if(this->recv_thread.joinable())
+		{
+			this->recv_thread.join();
+		}
+		/*
+		if(this->send_thread.joinable())
+		{
+			this->send_thread.join();
+		}
+		*/
 	}
-	this->setstopthreads(true); //stops threads forcefully
-	this->recv_thread.join();
-	//this->send_thread.join();
+	else
+	{
+		this->setstopthreads(true); //stops threads forcefully
+		if(this->recv_thread.joinable())
+		{
+			this->recv_thread.join();
+		}
+		/*
+		if(this->send_thread.joinable())
+		{
+			this->send_thread.join();
+		}
+		*/
+	}
 }
 
 void Communication::RunSnd()
@@ -141,6 +171,73 @@ void Communication::RunSnd()
 	this->sndmtx_queue.unlock();
 }
 
+std::string Communication::itostr(int _toConvert)
+{
+	std::stringstream ss;
+	std::string str;
+	ss << _toConvert;
+	ss >> str;
+	return str;
+}
+
+std::string Communication::ftostr(float _toConvert)
+{
+	std::stringstream ss;
+	std::string str;
+	ss << _toConvert;
+	ss >> str;
+	return str;
+}
+
+std::string Communication::receiveData(int sock_fd)
+{
+	char  ch = ' ';
+	std::string _received = "";
+	int _count = 0;
+	do
+	{
+		read(sock_fd,&ch,1);
+		_received.append(1,ch);
+		_count++;
+	} while (ch != '\n' || _count < 3); //Assumo que nao receberei mensagens menores que 3
+	return _received;
+}
+
+int Communication::sendData(std::string _toSend,int sock_fd)
+{
+	int _tamanho = _toSend.length();
+	write(sock_fd,_toSend.c_str(),_tamanho);
+	return 0;
+}
+
+double Communication::readAD(int _channel,int sock_fd)
+{
+	std::string _toSend = "READ ";
+	_toSend.append(itostr(_channel));
+	_toSend.append("\n");
+	sendData(_toSend,sock_fd);
+	std::string _rec = receiveData(sock_fd);
+	return atof(_rec.c_str());
+}
+
+int Communication::writeDA(int sock_fd,int _channel, float _volts)
+{
+	std::string _toSend = "WRITE ";
+	_toSend.append(itostr(_channel));
+	_toSend.append(" ");
+	_toSend.append(ftostr(_volts));
+	_toSend.append("\n");
+	this->sendData(_toSend,sock_fd);
+	std::string _rec = this->receiveData(sock_fd);
+	if(_rec.find("ACK",0) > _rec.length()) //check if there is an 'ACK' on the _recv string starting from position 0 of the string.
+	{
+		return -1 ; //erro
+	}
+	else
+	{
+		return 0;
+	}
+}
 void Communication::RunRcv()
 {
 	int res; //function call return for error checking
