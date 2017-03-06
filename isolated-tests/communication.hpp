@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <ctime>
+#include <chrono>
 #include <iostream>
 
 #include <sys/types.h>
@@ -39,17 +40,16 @@ class Communication
 
 		std::queue<std::string> send_queue;		//queue that sends that to control the plant
 		std::queue<std::string> recv_queue;		//queue that receives data from server
-		std::thread recv_thread;								//thread that monitors, and manages the queues
-		std::thread send_thread;								//thread that monitors, and manages the queues
-		std::mutex sndmtx_queue;								//Mutex to grant shared access to the recv queue
-		std::mutex rcvmtx_queue;								//Mutex to grant shared access to the recv queue
-		std::mutex stopmtx_threads;								//Mutex to grant shared access to stopthread variable
-		int fdread;																				//socket file descriptor
-		int fdwrite;																				//socket file descriptor
+		std::thread recv_thread;							//thread that monitors, and manages the queues
+		std::thread send_thread;							//thread that monitors, and manages the queues
+		std::mutex sndmtx_queue;							//Mutex to grant shared access to the recv queue
+		std::mutex rcvmtx_queue;							//Mutex to grant shared access to the recv queue
+		std::mutex stopmtx_threads;						//Mutex to grant shared access to stopthread variable
+		int fdread;														//socket file descriptor
+		int fdwrite;													//socket file descriptor
 		int port;															//server port to connect
-		std::string srv_ip;														//server ip to connect
+		std::string srv_ip;										//server ip to connect
 		std::string sndstring;
-		std::string recvstring;
 
 		bool stopthreads;
 		struct addrinfo server_addr;
