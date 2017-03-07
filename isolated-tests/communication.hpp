@@ -75,7 +75,7 @@ class Communication
 		bool isstopped();
 	public:
 		bool running;
-		Communication(std::string ip,int port);
+		Communication(std::string ip,int port,int,int);
 		~Communication();
 		void insert_snd_queue(std::string);
 		std::string getfrom_rcv_queue();

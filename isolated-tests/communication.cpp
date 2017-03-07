@@ -2,8 +2,10 @@
 
 ///////////////////METHODS///////////////////////////////
 
-Communication::Communication(std::string ip, int portno)
+Communication::Communication(std::string ip, int portno,int dac,int adc)
 {
+	this->DACChannel = dac;
+	this->ADCChannel = adc;
 	this->srv_ip = ip.c_str();
 	this->port = portno;
 	this->fdread = StartConn();
@@ -95,15 +97,18 @@ void Communication::setstopthreads(bool setting)
 
 void Communication::Start()
 {
-	if(!this->isstopped())
+	if(this->isstopped())
 	{
+		this->setstopthreads(false); //habilita thread loops
 		this->recv_thread = std::thread(&Communication::RunRcv,this);	//Start receiving queue management thread first
+		std::cout << "[DEBUG]: " << "started receiver thread." << std::endl;
 		//this->send_thread = std::thread(&Communication::RunSnd,this);
 	}
 	else
 	{
 		this->setstopthreads(false);
 		this->recv_thread = std::thread(&Communication::RunRcv,this);	//Start receiving queue management thread first
+		std::cout << "[DEBUG]: " << "started receiver thread." << std::endl;
 		//this->send_thread = std::thread(&Communication::RunSnd,this);
 	}
 
@@ -138,6 +143,28 @@ void Communication::Stop()
 		}
 		*/
 	}
+}
+
+void Communication::RunRcv()
+{
+	std::chrono::milliseconds startup(90);
+	this->rcvmtx_queue.lock();
+	std::cout << "[DEBUG]: " << "Queue size:" << this->recv_queue.size() << std::endl;
+	std::cout << "[DEBUG]: " << "this->rcvmtx_queue.lock()" << std::endl;
+	std::cout << "[DEBUG]: " << "stopthreads:" << this->isstopped() << std::endl;
+	std::cout << "[DEBUG]: " << "Queue size:" << this->recv_queue.size() << std::endl;
+	std::cout << "[DEBUG]: " << "startup sleep" << std::endl;
+	std::this_thread::sleep_for(startup);
+	while((!this->isstopped()))
+	{
+		std::cout << "[DEBUG]: " << "entered while loop" << std::endl;
+		this->recvstring = std::to_string(readAD(this->ADCChannel,this->fdread));
+		std::cout << "[DEBUG]: " << "readAD()" << std::endl;
+		this->recv_queue.push(this->recvstring);
+		std::cout << "[DEBUG]: " << "queue.push()" << this->recvstring << std::endl;
+	}
+	this->rcvmtx_queue.unlock();
+	std::cout << "[DEBUG]: " << "this->rcvmtx_queue.unlock()" << std::endl;
 }
 
 void Communication::RunSnd()
@@ -205,17 +232,26 @@ std::string Communication::receiveData(int sock_fd)
 
 int Communication::sendData(std::string _toSend,int sock_fd)
 {
+	int res;
 	int _tamanho = _toSend.length();
-	write(sock_fd,_toSend.c_str(),_tamanho);
+	res = write(sock_fd,_toSend.c_str(),_tamanho);
+	if(res < 0)
+	{
+		std::cerr << "[ERROR]: Write() failed | ERRNO: " << strerror(errno) << std::endl;
+	}
+
+	std::cout << "[DEBUG]: " << "senData" << _toSend << std::endl;
 	return 0;
 }
 
 double Communication::readAD(int _channel,int sock_fd)
 {
+	std::cout << "[DEBUG]: " << "readAD:" << std::endl;
 	std::string _toSend = "READ ";
 	_toSend.append(itostr(_channel));
 	_toSend.append("\n");
 	sendData(_toSend,sock_fd);
+	std::cout << "[DEBUG]: " << "readAD:" << "sendData()" << std::endl;
 	std::string _rec = receiveData(sock_fd);
 	return atof(_rec.c_str());
 }
@@ -237,24 +273,6 @@ int Communication::writeDA(int sock_fd,int _channel, float _volts)
 	{
 		return 0;
 	}
-}
-void Communication::RunRcv()
-{
-	int res; //function call return for error checking
-	std::chrono::duration<double,std::milli> startup(90);
-	this->rcvmtx_queue.lock();
-	while((this->recv_queue.size() < 100) && (!this->isstopped()))
-	{
-		std::this_thread::sleep_for(startup);
-		res = readAD(this->ADCChannel,this->fdread);
-		if(res < 0)
-		{
-			std::cerr << "[ERROR]: readAD() failed | ERRNO: " << strerror(errno) << std::endl; 
-			this->setstopthreads(true); //faiou 
-		}
-		this->recv_queue.push(this->recvstring);
-	}
-	this->rcvmtx_queue.unlock();
 }
 
 void Communication::insert_snd_queue(std::string data)
