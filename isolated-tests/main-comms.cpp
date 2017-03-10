@@ -1,6 +1,6 @@
 #include "communication.hpp"
-#define SERVER "127.0.0.1"
-#define PORT 3490
+#define SERVER "10.13.99.69"
+#define PORT 28001
 #define ADCHANNEL	4
 #define DACCHANNEL 4
 

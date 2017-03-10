@@ -45,12 +45,12 @@ int Communication::StartConn()
 	int sock_fd = socket(AF_INET,SOCK_STREAM,0);
 	if(sock_fd < 0)
 	{
-		std::cerr << "[ERROR]: Socket() failed." << std::endl;
+		std::cerr << "[ERROR]: Socket() failed | ERRNO: " << strerror(errno) << std::endl;
 		return -1;
 	}
 	if(connect(sock_fd,(struct sockaddr*)&address,sizeof(address))!= 0)
 	{
-		std::cerr << "[ERROR]: Connect() failed." << std::endl;
+		std::cerr << "[ERROR]: Connect() failed | ERRNO: " << strerror(errno) << std::endl;
 		return -1;
 	}
 	return sock_fd;
@@ -159,8 +159,17 @@ void Communication::RunRcv()
 	{
 		std::cout << "[DEBUG]: " << "entered while loop" << std::endl;
 		this->recvstring = std::to_string(readAD(this->ADCChannel,this->fdread));
+
+		std::cout << "[DEBUG]: " << "recvstring size: "<< this->recvstring.size() << std::endl;
 		std::cout << "[DEBUG]: " << "readAD()" << std::endl;
-		this->recv_queue.push(this->recvstring);
+		if(this->recvstring.size() > 0)
+		{
+			this->recv_queue.push(this->recvstring);
+		}
+		else
+		{
+			continue;
+		}
 		std::cout << "[DEBUG]: " << "queue.push()" << this->recvstring << std::endl;
 	}
 	this->rcvmtx_queue.unlock();
